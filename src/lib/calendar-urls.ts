@@ -48,3 +48,18 @@ export function generateOutlookCalendarUrl(event: EventData): string {
 
   return `${baseUrl}?${params.toString()}`;
 }
+
+export function generateAppleCalendarUrl(event: EventData, baseUrl: string): string {
+  const params = new URLSearchParams({
+    title: event.title,
+    desc: event.description,
+    startDate: event.startDate,
+    startTime: event.startTime,
+    endDate: event.endDate,
+    endTime: event.endTime,
+    tz: event.timezone,
+    location: event.location,
+  });
+
+  return `${baseUrl}/api/calendar?${params.toString()}`;
+}

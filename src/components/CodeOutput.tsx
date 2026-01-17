@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { EventData, ButtonStyle } from '@/lib/types';
-import { generateGoogleCalendarUrl, generateOutlookCalendarUrl } from '@/lib/calendar-urls';
+import { generateGoogleCalendarUrl, generateOutlookCalendarUrl, generateAppleCalendarUrl } from '@/lib/calendar-urls';
 import { generateIcsDataUrl } from '@/lib/ics-generator';
 
 interface CodeOutputProps {
@@ -20,12 +20,19 @@ export default function CodeOutput({ eventData, buttonStyle }: CodeOutputProps) 
   const [copied, setCopied] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
   const [outputMode, setOutputMode] = useState<'urls' | 'html'>('urls');
+  const [deployedUrl, setDeployedUrl] = useState('');
 
   const isValid = eventData.title && eventData.startDate && eventData.startTime && eventData.endDate && eventData.endTime;
 
   const googleUrl = isValid ? generateGoogleCalendarUrl(eventData) : '';
-  const icsUrl = isValid ? generateIcsDataUrl(eventData) : '';
   const outlookUrl = isValid ? generateOutlookCalendarUrl(eventData) : '';
+
+  // Generate Apple URL - use deployed URL if provided, otherwise show localhost for preview
+  const baseUrl = deployedUrl.trim() || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+  const appleUrl = isValid ? generateAppleCalendarUrl(eventData, baseUrl) : '';
+
+  // Keep data URL for local preview/testing
+  const icsDataUrl = isValid ? generateIcsDataUrl(eventData) : '';
 
   const generateHtml = (): string => {
     if (!isValid) return '';
@@ -38,9 +45,13 @@ export default function CodeOutput({ eventData, buttonStyle }: CodeOutputProps) 
     const appleIcon = buttonStyle.showIcons ? appleIconSvg : '';
     const outlookIcon = buttonStyle.showIcons ? outlookIconSvg : '';
 
+    // Use the API URL for Apple in HTML output
+    const appleHref = deployedUrl.trim() ? appleUrl : icsDataUrl;
+    const appleDownload = deployedUrl.trim() ? '' : ' download="event.ics"';
+
     const html = `<div style="display:flex;${containerDirection}gap:12px;">
   <a href="${googleUrl}" target="_blank" rel="noopener noreferrer" style="${baseStyle}background-color:${buttonStyle.googleBgColor};color:${buttonStyle.googleTextColor};">${googleIcon}${buttonStyle.googleLabel}</a>
-  <a href="${icsUrl}" download="event.ics" style="${baseStyle}background-color:${buttonStyle.appleBgColor};color:${buttonStyle.appleTextColor};">${appleIcon}${buttonStyle.appleLabel}</a>
+  <a href="${appleHref}"${appleDownload} style="${baseStyle}background-color:${buttonStyle.appleBgColor};color:${buttonStyle.appleTextColor};">${appleIcon}${buttonStyle.appleLabel}</a>
   <a href="${outlookUrl}" target="_blank" rel="noopener noreferrer" style="${baseStyle}background-color:${buttonStyle.outlookBgColor};color:${buttonStyle.outlookTextColor};">${outlookIcon}${buttonStyle.outlookLabel}</a>
 </div>`;
 
@@ -153,30 +164,44 @@ export default function CodeOutput({ eventData, buttonStyle }: CodeOutputProps) 
             />
           </div>
 
-          {/* Apple Calendar Note */}
-          <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+          {/* Apple Calendar URL */}
+          <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-amber-800">Apple Calendar</span>
+              <span className="text-sm font-medium text-gray-700">Apple Calendar</span>
               <button
-                onClick={() => handleCopyUrl(icsUrl, 'apple')}
+                onClick={() => handleCopyUrl(appleUrl, 'apple')}
                 className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
                   copiedUrl === 'apple'
                     ? 'bg-green-500 text-white'
-                    : 'bg-amber-600 text-white hover:bg-amber-700'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
                 }`}
               >
                 {copiedUrl === 'apple' ? 'Copied!' : 'Copy URL'}
               </button>
             </div>
-            <p className="text-xs text-amber-700 mb-2">
-              This is a data URL that downloads an .ics file. It works but is very long. For best results, host the .ics file and use that URL instead.
-            </p>
+            <div className="mb-2">
+              <label className="block text-xs text-gray-500 mb-1">
+                Your deployed URL (e.g., https://addcal.vercel.app)
+              </label>
+              <input
+                type="text"
+                value={deployedUrl}
+                onChange={(e) => setDeployedUrl(e.target.value)}
+                placeholder="https://your-app.vercel.app"
+                className="w-full px-2 py-1.5 text-xs bg-white border border-gray-300 rounded font-mono text-gray-700"
+              />
+            </div>
             <input
               type="text"
               readOnly
-              value={icsUrl.substring(0, 80) + '...'}
-              className="w-full px-2 py-1.5 text-xs bg-white border border-amber-300 rounded font-mono text-gray-700"
+              value={appleUrl}
+              className="w-full px-2 py-1.5 text-xs bg-white border border-gray-300 rounded font-mono text-gray-700"
             />
+            {!deployedUrl.trim() && (
+              <p className="text-xs text-amber-600 mt-2">
+                Enter your deployed URL above to get a working Apple Calendar link. The URL shown uses localhost which only works locally.
+              </p>
+            )}
           </div>
         </div>
       ) : (
@@ -193,6 +218,21 @@ export default function CodeOutput({ eventData, buttonStyle }: CodeOutputProps) 
               {copied ? 'Copied!' : 'Copy HTML'}
             </button>
           </div>
+
+          {!deployedUrl.trim() && (
+            <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+              <label className="block text-xs text-amber-700 mb-1">
+                Enter your deployed URL for Apple Calendar to work:
+              </label>
+              <input
+                type="text"
+                value={deployedUrl}
+                onChange={(e) => setDeployedUrl(e.target.value)}
+                placeholder="https://your-app.vercel.app"
+                className="w-full px-2 py-1.5 text-xs bg-white border border-amber-300 rounded font-mono text-gray-700"
+              />
+            </div>
+          )}
 
           <div className="relative">
             <pre className="p-4 bg-gray-900 text-gray-100 rounded-lg overflow-x-auto text-sm">

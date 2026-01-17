@@ -1,8 +1,7 @@
 'use client';
 
 import { EventData, ButtonStyle } from '@/lib/types';
-import { generateGoogleCalendarUrl, generateOutlookCalendarUrl } from '@/lib/calendar-urls';
-import { generateIcsDataUrl } from '@/lib/ics-generator';
+import { generateGoogleCalendarUrl, generateOutlookCalendarUrl, generateAppleCalendarUrl } from '@/lib/calendar-urls';
 
 interface ButtonPreviewProps {
   eventData: EventData;
@@ -82,7 +81,8 @@ export default function ButtonPreview({ eventData, buttonStyle }: ButtonPreviewP
   }
 
   const googleUrl = generateGoogleCalendarUrl(eventData);
-  const icsUrl = generateIcsDataUrl(eventData);
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+  const appleUrl = generateAppleCalendarUrl(eventData, baseUrl);
   const outlookUrl = generateOutlookCalendarUrl(eventData);
 
   return (
@@ -105,8 +105,7 @@ export default function ButtonPreview({ eventData, buttonStyle }: ButtonPreviewP
           </a>
 
           <a
-            href={icsUrl}
-            download="event.ics"
+            href={appleUrl}
             style={appleButtonStyle}
             onMouseOver={(e) => (e.currentTarget.style.opacity = '0.9')}
             onMouseOut={(e) => (e.currentTarget.style.opacity = '1')}
